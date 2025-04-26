@@ -48,4 +48,3 @@ int main() {
 	close(dummyfd);
 	return 0;
 }
-

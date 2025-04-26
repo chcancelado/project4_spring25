@@ -10,6 +10,9 @@
 #define N 13
 
 extern char **environ;
+
+int server;
+
 char uName[20];
 
 char *allowed[N] = {"cp","touch","mkdir","ls","pwd","cat","grep","chmod","diff","cd","exit","help","sendmsg"};
@@ -35,13 +38,7 @@ void sendmsg (char *user, char *target, char *msg) {
 	strcpy(req.source, user);
 	strcpy(req.target, target);
 	strcpy(req.msg, msg);
-	int server = open("serverFIFO",O_WRONLY);
-	if (server < 0) {
-    		perror("open serverFIFO");
-    		return;
-	}
 	write(server,&req,sizeof(struct message));
-	close(server);
 
 }
 
@@ -53,15 +50,15 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
+	int client = open((char*)(arg), O_RDONLY);
 	while (1) {
-		int client = open((char*)(arg), O_RDONLY);
 		struct message req;
 		if (read(client,&req,sizeof(struct message))!=sizeof(struct message)) continue;
 		char* sender = req.source;
 		char* content = req.msg;
 		printf("Incoming message from %s: %s \n", sender, content);
-		close(client);
 	}
+	close(client);
 	pthread_exit((void*)0);
 }
 
@@ -91,6 +88,7 @@ int main(int argc, char **argv) {
 
     strcpy(uName,argv[1]);
 
+    server = open("serverFIFO", O_WRONLY);
     // TODO:
     // create the message listener thread
     pthread_t tid;
@@ -216,5 +214,6 @@ int main(int argc, char **argv) {
 	posix_spawnattr_destroy(&attr);
 
     }
+    close(server);
     return 0;
 }
