@@ -31,12 +31,17 @@ void sendmsg (char *user, char *target, char *msg) {
 	// Send a request to the server to send the message (msg) to the target user (target)
 	// by creating the message structure and writing it to server's FIFO
 
-
-
-
-
-
-
+	struct message req;
+	strcpy(req.source, user);
+	strcpy(req.target, target);
+	strcpy(req.msg, msg);
+	int server = open("serverFIFO",O_WRONLY);
+	if (server < 0) {
+    		perror("open serverFIFO");
+    		return;
+	}
+	write(server,&req,sizeof(struct message));
+	close(server);
 
 }
 
@@ -48,12 +53,15 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
-
-
-
-
-
-
+	while (1) {
+		int client = open((char*)(arg), O_RDONLY);
+		struct message req;
+		if (read(client,&req,sizeof(struct message))!=sizeof(struct message)) continue;
+		char* sender = req.source;
+		char* content = req.msg;
+		printf("Incoming message from %s: %s \n", sender, content);
+		close(client);
+	}
 	pthread_exit((void*)0);
 }
 
@@ -85,7 +93,8 @@ int main(int argc, char **argv) {
 
     // TODO:
     // create the message listener thread
-
+    pthread_t tid;
+    pthread_create(&tid, NULL, messageListener, (void *)uName);
 
 
 
@@ -124,15 +133,27 @@ int main(int argc, char **argv) {
 		// if no message is specified, you should print the followingA
  		// printf("sendmsg: you have to enter a message\n");
 
-
-
-
-
-
-
-
-
-
+                char* target = strtok(line2," "); /* skip cargv[0] which is completed already */
+        	target = strtok(NULL, " ");
+		if(target == NULL){
+			printf("sendmsg: you have to specify target user\n");
+                        continue;
+		}
+		char* message_word = strtok(NULL, " ");
+                if(message_word == NULL){
+			printf("sendmsg: you have to enter a message\n");
+			continue;
+		}
+		char message[200];
+		message[0] = '\0';
+		strcat(message, message_word);
+		message_word = strtok(NULL, " ");
+		while(message_word != NULL){
+			strcat(message, " ");
+			strcat(message, message_word);
+			message_word = strtok(NULL, " ");
+		}
+		sendmsg (uName, target, message);
 		continue;
 	}
 
